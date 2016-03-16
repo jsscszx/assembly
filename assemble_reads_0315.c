@@ -29,17 +29,13 @@ struct kmer_state{
 };
 
 struct read_state{
-	char nc[Length]; //sequence
-	int len; // length
-	int kmer_index[25000]; // list of kmers
-	int kmer_pos[25000]; // list of kmer_positions
-	int kmer_count; // number of kmers
+
 	int chimeric_tag; // whether it is chimeric (=1) or not (=0), 
-	int overlap_read[200]; // overlapping reads
-	int overlap_start_pos1[200]; // start position of the overlapped region in the overlapping reads
-	int overlap_end_pos1[200]; // end position of the overlapped region in the overlapping reads
-        int overlap_start_pos2[200]; // start position of the overlapped region in this read
-        int overlap_end_pos2[200]; // end position of the overlapped region in this read
+	int overlap_read[200]; // the index of the overlapping reads
+	int overlap_start_pos1[200]; // start position of the overlapped region in this reads
+	int overlap_end_pos1[200]; // end position of the overlapped region in this reads
+        int overlap_start_pos2[200]; // start position of the overlapped region in the other read
+        int overlap_end_pos2[200]; // end position of the overlapped region in the other read
 	int overlap_read_count; // number of overlapping reads
 	int visited_tag; // whether it has been visited (=1) or not (=0)
 };
@@ -799,8 +795,8 @@ int indexing_Reads_kmer(struct read_state * Reads, struct kmer_state * kmer, int
 	for (i = 0; i < read_index; i=i+2){
 		//printf(" Reads[%d] len %d\n", i, Reads[i].len); getchar();
 		read_kmer_count = 0;
-		max_gap = 0;
-		temp_gap = 0;
+		max_gap = 0; //for test
+		temp_gap = 0; //for test
 		for (j = 0; j < Reads[i].len-kmerlength-1 ; j++){
 			for (j1 = j; j1 < j+kmerlength ; j1++){
 				temp_kmer1[j1-j] = Reads[i].nc[j1];
@@ -813,7 +809,9 @@ int indexing_Reads_kmer(struct read_state * Reads, struct kmer_state * kmer, int
 				temp_hash_index = get_hash_index(temp_kmer1);
 			else
 				temp_hash_index = get_hash_index(temp_kmer2);
-			if (hashtable[temp_hash_index] == -1)
+			if (hashtable[temp_hash_index] == -1) 
+			// from temp_hash_index get the range [temp_table_index1, temp_table_index2] in the kmer table
+			// get temp_kmer_index as a reult
 				temp_kmer_index = -1;
 			else{
 				temp_table_index1 = hashtable[temp_hash_index];
@@ -832,6 +830,7 @@ int indexing_Reads_kmer(struct read_state * Reads, struct kmer_state * kmer, int
 				if (strcmp(temp_kmer1, temp_kmer2) > 0){
 					temp_kmer_index = temp_kmer_index + kmer_index;
 				}
+				// downsampling to 24
 				if (kmer[temp_kmer_index].cov < 24){
 					tag_overflow = 0;
 				}else if (kmer[temp_kmer_index].true_cov > 23){
@@ -901,11 +900,11 @@ int assemble_reads(struct read_state * Reads, struct kmer_state * kmer, int read
                 j++;
         }
 
-        j=0;
-        while(j < read_index){ 
-                printf("Read[%d] -> Read[%d]  %d \n", j, move_right_read(j, Reads, 10), right_extend_number(j,Reads) );
-                j++;
-        }
+        //j=0;
+        //while(j < read_index){ 
+        //        printf("Read[%d] -> Read[%d]  %d \n", j, move_right_read(j, Reads, 10), right_extend_number(j,Reads) );
+        //        j++;
+        //}
 
 
         /*j = read_index % 1000;
@@ -961,8 +960,8 @@ int main (int argc, char* argv[])
 	int kmerlength = atoi(argv[7]);
         clock_t start, end;
         double cpu_time_used;
-        struct kmer_state * kmer;
-	struct read_state * Reads;
+        struct kmer_state * kmer;//kmer table
+	struct read_state * Reads; //read table
 
 	//read all the reads from file argv[1] to Reads, and write the numbered reads to file argv[5], get the number of reads as read_index	
 	start = clock();	
