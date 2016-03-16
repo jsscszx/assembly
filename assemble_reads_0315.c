@@ -13,10 +13,10 @@
 
 // for test purposes
 #define CHECK_TAG 0
-#define XXX1 41278
-#define XXX2 40210
-#define XXX3 18480
-#define XXX4 20672
+#define XXX1 -100
+#define XXX2 -100
+#define XXX3 -100
+#define XXX4 -100
 
 
 // The Table of All Frequent kmers
@@ -156,6 +156,8 @@ int abs_dis(int a, int b){
 int check_right_extend(int i, int j, struct read_state * Reads){
 	int temp_read;
 	temp_read = Reads[i].overlap_read[j];
+	if (temp_read == i)
+		return(0);
 	if ((Reads[temp_read].len - Reads[i].overlap_end_pos2[j]) > (Reads[i].len - Reads[i].overlap_end_pos1[j]))
 		return(1);
 	else
@@ -173,8 +175,7 @@ int right_extend_number(int i, struct read_state * Reads){
 			count++;
 		}
 	}
-
-
+	return(count);
 }
 
 
@@ -193,6 +194,7 @@ int move_right_read(int i, struct read_state * Reads, int start_read){
 				return(candidate);
 			}
 			if ((check_right_extend(i, j1, Reads) == 1)&&(Reads[temp_read].chimeric_tag == 0) && (right_extend_number(temp_read, Reads) > 0 )){
+				printf("From Read[%d] -> (%d) Read[%d] (%d %d len %d) (%d %d len %d)\n", i, j1, temp_read, Reads[i].overlap_start_pos1[j1], Reads[i].overlap_end_pos1[j1], Reads[i].len, Reads[i].overlap_start_pos2[j1], Reads[i].overlap_end_pos2[j1], Reads[temp_read].len);
 				if (Reads[i].overlap_end_pos1[j1] - Reads[i].overlap_start_pos1[j1] > max_overlap){
 					max_overlap = Reads[i].overlap_end_pos1[j1] - Reads[i].overlap_start_pos1[j1];
 					candidate = temp_read;
@@ -202,7 +204,7 @@ int move_right_read(int i, struct read_state * Reads, int start_read){
 		if (candidate == -1){
 			for (j1 = 0; j1 < Reads[i].overlap_read_count ; j1++){
 				temp_read = Reads[i].overlap_read[j1];
-				if ((check_right_extend(i, j, Reads) == 1)&&(Reads[temp_read].chimeric_tag >= 0) && (right_extend_number(temp_read, Reads) >= 0 )){
+				if ((check_right_extend(i, j1, Reads) == 1)&&(Reads[temp_read].chimeric_tag >= 0) && (right_extend_number(temp_read, Reads) >= 0 )){
 					if (Reads[i].overlap_end_pos1[j1] - Reads[i].overlap_start_pos1[j1] > max_overlap){
 						max_overlap = Reads[i].overlap_end_pos1[j1] - Reads[i].overlap_start_pos1[j1];
 						candidate = temp_read;
@@ -420,11 +422,11 @@ int test_jump(int c1, int n1, int c2, int n2){
 }
 
 
-int left_i[ReadNumber][100];
-int right_i[ReadNumber][100];
-int left_j[ReadNumber][100];
-int right_j[ReadNumber][100];
 
+int left_i[ReadNumber][100]; // these global variables are only used in the test_chimeric_read function
+int left_j[ReadNumber][100];
+int right_i[ReadNumber][100];
+int right_j[ReadNumber][100];
 //find all overlapping reads for Reads[i] and check if Reads[i] is chimeric or not
 int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kmer, int reads_cov, int read_index){
 	int j, j1, j2;
@@ -433,9 +435,11 @@ int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kme
 	int active_count[ReadNumber];
 	int temp_tag[100];
 	int temp_length[100];
-	int temp_max_length;
+	int temp_max_length2;
+	int temp_max_length3;
 	int temp_min_length;
 	int temp_max_j2;
+	int temp_max_j3;
 	int temp_min_j2;
 	int temp_include_tag;
 	int linked[ReadNumber];
@@ -446,6 +450,7 @@ int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kme
 	int temp_kmer_index;
 	int temp_other_read;
 	int temp_i_loc, temp_j_loc;
+	int temp_index;
 	//int max_active[ReadNumber];	
 
 	Reads[i].chimeric_tag = 0;
@@ -483,7 +488,8 @@ int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kme
                                         	right_j[temp_other_read][0] = temp_j_loc;
 					}
 				}else{
-					temp_max_length = -1;
+					temp_max_length2 = -1;
+					temp_max_length3 = -1;
 					temp_min_length = 5000000;
 					temp_include_tag = 0;
                                         for(j2 = 0; j2 < active_count[temp_other_read] ; j2++){
@@ -492,10 +498,17 @@ int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kme
  							printf("OVERLAP %d %d [%d] %d-%d %d-%d Tag=%d\n", i, temp_other_read, j2, left_i[temp_other_read][j2],right_i[temp_other_read][j2], left_j[temp_other_read][j2],right_j[temp_other_read][j2], temp_tag[j2]);
                                                 if (temp_tag[j2] == 2){
                                                         temp_length[j2] = temp_i_loc - left_i[temp_other_read][j2];
-                                                        if (temp_length[j2] > temp_max_length){
-                                                                temp_max_length = temp_length[j2];
+                                                        if (temp_length[j2] > temp_max_length2){
+                                                                temp_max_length2 = temp_length[j2];
 								temp_max_j2 = j2;
 							}
+                                                }
+                                                if (temp_tag[j2] == 3){
+                                                        temp_length[j2] = temp_i_loc - left_i[temp_other_read][j2];
+                                                        if (temp_length[j2] > temp_max_length3){
+                                                                temp_max_length3 = temp_length[j2];
+                                                                temp_max_j3 = j2;
+                                                        }
                                                 }
 	                                        temp_length[j2] = temp_i_loc - left_i[temp_other_read][j2];
                                                 if (temp_length[j2] < temp_min_length){
@@ -527,6 +540,7 @@ int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kme
 								temp_tag[j2] = 0;
 							}
                                                 }else if (temp_tag[j2] == 3){
+							if (j2 == temp_max_j3){
                                                                 left_i[temp_other_read][active_count[temp_other_read]] = left_i[temp_other_read][j2];
                                                                 left_j[temp_other_read][active_count[temp_other_read]] = left_j[temp_other_read][j2];
                                                                 right_i[temp_other_read][active_count[temp_other_read]] = temp_i_loc;
@@ -534,6 +548,7 @@ int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kme
                                                                 temp_tag[active_count[temp_other_read]] = 1;
                                                                 active_count[temp_other_read]++;
                                                                 temp_include_tag = 1;
+							}
 						}
                                         }
 
@@ -596,8 +611,8 @@ int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kme
                                 for (j = start_align_i[j1]/100; j <= end_align_i[j1]/100 ; j++){
                                 	coverage[j]++;
                                 }
-				if (i %1000 == 0)
-                                printf("Read[%d] (len %d left %d right %d right) Read[%d] (len %d left %d right %d) \n", i, Reads[i].len, start_align_i[j1], end_align_i[j1], j1, Reads[j1].len, start_align_j[j1], end_align_j[j1] );
+				if (i % 100 == 0)
+                                	printf("Read[%d] (len %d left %d right %d right) Read[%d] (len %d left %d right %d) \n", i, Reads[i].len, start_align_i[j1], end_align_i[j1], j1, Reads[j1].len, start_align_j[j1], end_align_j[j1] );
                         }
                 }
         }
@@ -611,8 +626,8 @@ int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kme
 	}
 
 	if (Reads[i].chimeric_tag >= 0){
-                if (i %1000 == 0)
-		printf("Chimeric Read[%d] %d\n", i, Reads[i].chimeric_tag);
+                if (i %1 == 0)
+			printf("Chimeric Read[%d] %d\n", i, Reads[i].chimeric_tag);
 		for (j1 = 0; j1 < read_index ; j1++){
 	                if ((j1 % 2 == 1)&&(linked[j1-1] == 1)){
         	                        ;
@@ -625,6 +640,12 @@ int test_chimeric_read(int i, struct read_state * Reads, struct kmer_state * kme
                                                 Reads[i].overlap_start_pos2[Reads[i].overlap_read_count] =  start_align_j[j1];
                                                 Reads[i].overlap_start_pos2[Reads[i].overlap_read_count] =  end_align_j[j1];
 						Reads[i].overlap_read_count++;
+
+						if (i % 100 == 0){
+							temp_index = Reads[i].overlap_read_count-1;
+                                			printf("Read[%d].%d (len %d left %d right %d right) Read[%d] (len %d left %d right %d) \n", i, temp_index, Reads[i].len, Reads[i].overlap_start_pos1[temp_index], Reads[i].overlap_end_pos1[temp_index], j1, Reads[j1].len, Reads[i].overlap_start_pos2[temp_index], Reads[i].overlap_end_pos2[temp_index]);
+						}
+
                                                 if (j1%2 == 0){
                                                         Reads[i+1].overlap_read[Reads[i+1].overlap_read_count] = j1+1;
 	                                                Reads[i+1].overlap_start_pos1[Reads[i+1].overlap_read_count] = Reads[i].len - end_align_i[j1];
@@ -876,7 +897,7 @@ int assemble_reads(struct read_state * Reads, struct kmer_state * kmer, int read
         j=0;
         while(j < read_index){ //find all overlapping reads w.r.t. each read j
                 if (j%2 == 0)
-                        test_chimeric_read(j, Reads, kmer,reads_cov, read_index);
+                        test_chimeric_read(j, Reads, kmer,reads_cov, read_index );
                 j++;
         }
 
@@ -887,13 +908,13 @@ int assemble_reads(struct read_state * Reads, struct kmer_state * kmer, int read
         }
 
 
-        j = read_index % 1000;
+        /*j = read_index % 1000;
         while((Reads[j].chimeric_tag == 1)||(right_extend_number(j,Reads) < 5)){
                 j=j+1;
 		printf("Try Read[%d] %d\n", j+1, right_extend_number(j+1,Reads));
         }
         j = move_right_read(j, Reads, j);
-        start_read = j;
+        start_read = j;*/
         start_read = j = 38880;
         Reads[j].visited_tag = 1;
         printf("Start Read %d\n", j);//getchar();
@@ -928,6 +949,7 @@ int assemble_reads(struct read_state * Reads, struct kmer_state * kmer, int read
                 printf("Contig: linear !!!\n");
                 generate_circular_contig(assembled_reads,  Reads, kmer, assembly_reads, assembly_genome);
         }
+
 
 }
 
