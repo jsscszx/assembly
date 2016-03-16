@@ -29,7 +29,11 @@ struct kmer_state{
 };
 
 struct read_state{
-
+ 	char nc[Length]; //sequence
+ 	int len; // length
+ 	int kmer_index[25000]; // list of kmers
+ 	int kmer_pos[25000]; // list of kmer_positions
+ 	int kmer_count; // number of kmers
 	int chimeric_tag; // whether it is chimeric (=1) or not (=0), 
 	int overlap_read[200]; // the index of the overlapping reads
 	int overlap_start_pos1[200]; // start position of the overlapped region in this reads
